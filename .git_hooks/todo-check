@@ -1,0 +1,50 @@
+#!/bin/bash
+
+set -e
+
+cd "$(dirname "$0")/.."
+
+echo "=> Checking for TODO notes"
+
+COUNT=0
+exit_code=0
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+LB='\033[0;36m'
+NC='\033[0m'
+
+mkdir -p tmp;
+
+for FILE in `git diff-index -p -M --name-only --cached HEAD`; do
+  [[ $FILE == *"git_hooks"* ]] && continue
+  if [[ -f "$FILE" ]]; then
+    COUNT=$((COUNT+1))
+
+    while read line; do
+      [[ -z $line ]] && continue
+      if ! echo "$line" | grep -q 'https://'; then
+        echo "   $line " 2>&1 >> tmp/lines
+        exit_code=1
+      fi
+    done <<< "$(grep 'TODO' $FILE)"
+
+    if [[ -f "tmp/lines" ]]; then
+      echo "$FILE"
+      cat tmp/lines
+      rm tmp/lines
+    fi
+  fi
+done
+
+if [ $exit_code == 1 ]; then
+  echo ""
+  echo -e "$COUNT files inspected, ${RED}TODOS detected${NC}"
+  echo -e "${LB}Please include a link to the JIRA ticket tracking each TODO line(s)"
+  echo -e "Then retry the commit. Thanks for keeping our code clean.${NC}"
+  echo -e "  example: #TODO: https://link/to/JIRA-123"
+  echo ""
+else
+  echo -e "$COUNT files inspected, ${GREEN}no todos ${NC}detected"
+fi
+
+exit $exit_code

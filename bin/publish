@@ -1,0 +1,99 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require "pathname"
+require "logger"
+
+ENGINE_ROOT = Pathname.new(File.expand_path("..", __dir__))
+
+# Set up gems listed in the Gemfile.
+ENV["BUNDLE_GEMFILE"] ||= File.expand_path("../Gemfile", __dir__)
+require "bundler/setup" if File.exist?(ENV["BUNDLE_GEMFILE"])
+
+require "rails"
+require "active_model/railtie"
+require "active_record/railtie"
+require "action_controller/railtie"
+require "action_mailbox/engine"
+require "action_text/engine"
+Bundler.require(*Rails.groups)
+
+require "data_producer"
+require "optparse"
+Dir[ENGINE_ROOT.join("app", "**", "*.rb")].each { |f| require f }
+
+# Publish provides a convenient way to send a single message across the message
+#   bus from the commandline.
+#
+# @author rebecca.chapin@fundthatflip.com
+#
+# @example
+#   data_producer> bundle exec bin/publish -t test_data
+#
+# @api private
+class Publish
+  def self.main(argv)
+    new(argv).run
+  end
+
+  # @param args [Array<String>] The list of CLI arguments
+  def initialize(args)
+    opts = parser.order!(args) {}
+    parser.parse!(opts)
+  end
+
+  # The main execution method
+  # @return nil
+  def run
+    configure_data_producer!
+    DataProducer.logger.info(options)
+    DataProducer.start
+    DataProducer::ReportingService
+      .call(options[:action], options[:key], options[:data]) do |s|
+      DataProducer.logger.info(s.success?)
+    end
+    DataProducer.stop
+  end
+
+  private
+
+  def configure_data_producer!
+    DataProducer.configure do |c|
+      c.deliver = true
+      c.logger = logger
+      c.keep_alive = false
+      c.client_id = "Data Producer"
+      c.topic = options[:topic]
+    end
+  end
+
+  def logger
+    return @logger if defined?(@logger)
+
+    @logger ||= Logger.new(STDOUT).tap do |l|
+      l.level = Logger::INFO
+    end
+  end
+
+  def parser # rubocop:disable Metrics/AbcSize
+    @parser ||= OptionParser.new do |p|
+      p.banner = "Usage: bundle exec publish [OPTIONS]"
+      p.on("-a", "--action NAME") { |v| options[:action] = v.to_sym }
+      p.on("-t", "--topic NAME") { |v| options[:topic] = v }
+      p.on("-k", "--key KEY") { |v| options[:key] = v }
+      p.on("-d", "--data JSON") { |v| options[:data] = JSON.parse(v, symbolize_names: true) }
+    end
+  end
+
+  def options
+    @options ||= {
+      action: :create,
+      topic: "data",
+      key: "Deal",
+      data: {id: 1, title: "A Title"},
+    }
+  end
+end
+
+# Publish some data
+Publish.main(ARGV)

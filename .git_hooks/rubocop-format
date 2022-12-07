@@ -1,0 +1,8 @@
+#!/bin/bash
+
+set -e
+
+cd "$(dirname "$0")/.."
+
+echo "=> Running Rubocop Auto-Correct (Safe)"
+bundle exec rubocop -a $(git diff-index -p -M --name-only --cached HEAD | xargs ls -1 2>/dev/null | grep "\.rb$")

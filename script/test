@@ -1,0 +1,20 @@
+#!/bin/bash
+
+if [ "$RAILS_ENV" = "test" ]; then
+  script/update
+else
+  export RAILS_ENV="test"
+  script/update
+fi
+
+echo "==> Running tests…"
+
+if [ -n "$1" ]; then
+    bundle exec rspec  "$1"
+  else
+    bundle exec rspec
+fi
+
+if [ "$COVER" = "true" ]; then
+  open coverage/index.html
+fi

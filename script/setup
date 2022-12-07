@@ -1,0 +1,12 @@
+#!/bin/sh
+
+# script/setup: Set up application for the first time after cloning, or initial state.
+
+set -e
+
+cd "$(dirname "$0")/.."
+
+echo "==> Setting up DB…"
+bundle exec bin/rails db:drop db:create
+# force test db creation
+RAILS_ENV=test bundle exec spec/dummy/bin/rake db:drop db:create

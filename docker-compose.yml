@@ -1,0 +1,74 @@
+version: "3.8"
+
+networks:
+  data:
+    external:
+      name: data
+
+services:
+  # service/database
+  database:
+    image: postgres:13
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    ports:
+      - 5432
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    networks:
+      default:
+      data:
+        aliases:
+          - data-web
+
+  # service/kinesis
+  kinesis:
+    image: ghcr.io/etspaceman/kinesis-mock:0.1.8
+    ports:
+      - 4567
+      - 4568
+    environment:
+      - INITIALIZE_STREAMS=data:2
+      - LOG_LEVEL=info
+    networks:
+      default:
+      data:
+        aliases:
+          - data-web
+
+  # service/engine
+  engine:
+    build:
+      context: .
+      args:
+        GITHUB_TOKEN: "${GITHUB_TOKEN}"
+    image: data-producer:0.1.0
+    volumes:
+      - .:/app:cached
+      - bundler:/vendor/gems
+    command: bash -c "rm -f tmp/pids/server.pid && bundle exec rails s -p 3000 -b '0.0.0.0'"
+    ports:
+      - "3000:3000"
+    depends_on:
+      - database
+      - kinesis
+    environment:
+      RAILS_ENV: development
+      DATABASE_NAME: dummy_development
+      DATABASE_URL: "postgres://postgres:postgres@database:5432"
+      KINESIS_HOST: "http://kinesis:4568"
+      DELIVER: "true"
+      CLIENT_ID: "DockerDummy"
+      AWS_ACCESS_KEY: "test"
+      AWS_SECRET_ACCESS_KEY: "test"
+      AWS_REGION: "us-east-1"
+    networks:
+      default:
+      data:
+        aliases:
+          - data-web
+
+volumes:
+  db_data:
+  bundler:

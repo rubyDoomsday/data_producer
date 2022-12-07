@@ -1,0 +1,9 @@
+#!/bin/bash
+
+set -e
+
+cd "$(dirname "$0")/../.."
+
+echo "==> Running pre-commit hooks"
+.git_hooks/rubocop-format
+.git_hooks/todo-check

@@ -1,0 +1,24 @@
+shared:
+  deliver: true
+  client_id: <%= ENV.fetch("CLIENT_ID", "Dummy") %>
+  keep_alive: <%= ENV.fetch("KEEP_ALIVE", "false") %>
+  heartbeat: <%= ENV.fetch("HEARTBEAT", 10) %>
+  kinesis_host: <%= ENV.fetch("KINESIS_HOST", "http://localhost:4568") %>
+
+# see: https://github.com/aws/aws-sdk-ruby#configuration
+development:
+  aws_access_key_id: null
+  aws_secret_access_key: null
+  aws_region: null
+  kinesis_host: null
+
+test:
+  deliver: false
+  aws_access_key_id: "test"
+  aws_secret_access_key: "test"
+  aws_region: "us-east-2"
+
+production:
+  aws_access_key_id: <% ENV.fetch("DATA_PRODUCER_ACCESS_KEY", nil) %>
+  aws_secret_access_key: <% ENV.fetch("DATA_PRODUCER_SERCRET_KEY", nil) %>
+  aws_region: <% ENV.fetch("AWS_REGION", nil) %>

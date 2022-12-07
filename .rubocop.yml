@@ -1,0 +1,16 @@
+inherit_gem:
+  ftf-style:
+    - rubocop.yml
+
+AllCops:
+  Exclude:
+    - spec/dummy/db/schema.rb
+
+Layout/LineLength:
+  Exclude:
+    - spec/dummy/config/environments/*.rb
+    - spec/dummy/config/initializers/backtrace_silencers.rb
+
+Lint/MissingSuper:
+  Exclude:
+    - app/services/**/*.rb

@@ -1,0 +1,60 @@
+version: '2'
+
+environment:
+  RAILS_ENV: development
+
+compose:
+  files:
+    - docker-compose.yml
+
+interaction:
+  sh:
+    service: engine
+    command: /bin/bash
+
+  bash:
+    service: engine
+    command: /bin/bash
+    compose_run_options: [no-deps]
+
+  bundle:
+    service: engine
+    command: bundle
+    compose_run_options: [no-deps]
+
+  rake:
+    service: engine
+    command: bundle exec rake
+
+  rails:
+    service: engine
+    command: bundle exec rails
+    subcommands:
+      s:
+        service: engine
+        compose_run_options: [service-ports]
+
+  kinesis:
+    service: kinesis
+
+  test:
+    service: engine
+    environment:
+      RAILS_ENV: test
+    command: script/test
+
+  rubocop:
+    service: engine
+    command: bundle exec rubocop
+    compose_run_options: [no-deps]
+
+  psql:
+    service: postgres
+    command: psql -h postgres -U postgres -d fundthatflip_development
+
+provision:
+  - docker network inspect data > /dev/null 2>&1 || docker network create data
+  - dip compose down --volumes
+  - dip compose up -d engine
+  - dip bundle config --local GITHUB__COM "${GITHUB_TOKEN}:x-oauth-basic"
+  - dip sh -c script/setup

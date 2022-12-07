@@ -1,0 +1,31 @@
+#!/bin/sh
+
+# script/update: Update application to run for its current checkout.
+set -e
+
+cd "$(dirname "$0")/.."
+
+if [ -f "Gemfile" ]; then
+  bundle check --path vendor/gems >/dev/null 2>&1  || {
+    echo "==> Installing gem dependencies…"
+    bundle config set --local path 'vendor/gems'
+    bundle config set --local without 'production'
+
+    not_configured=$(bundle config GITHUB__COM | grep -q "not configured")
+    if [ -z $not_configured ]; then
+      echo "==> configuring access to ftf gems"
+      bundle config --local GITHUB__COM $GITHUB_TOKEN:x-oauth-basic
+    fi
+
+    bundle lock --add-platform x86_64-linux
+    bundle install
+  }
+fi
+
+# run all database migrations to ensure everything is up to date.
+echo "==> Updating $RAILS_ENV DB…"
+if [ -f "spec/dummy/db/schema.rb" ]; then
+  (bundle exec bin/rails db:migrate:status | grep "^\s*down") && bundle exec bin/rails db:migrate
+fi
+
+exit 0
